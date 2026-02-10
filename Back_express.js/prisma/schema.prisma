@@ -2,14 +2,13 @@
 //* Quand on lances :npx prisma generate => Prisma génère du code dans src/generated/prisma/
 //***************************************************************************************/
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "sqlite"
-  //l'url de la database se trouve dans prisma.config.ts
 }
+
 
 //***********************************************/
 //* MODELS : 

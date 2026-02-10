@@ -20,7 +20,7 @@ app.use(express.json());
 
 
 //! (3) -- ROUTING
-app.use('/api', authRouter)
+app.use('/api/auth', authRouter)
 
 
 //! (4) -- DEMARRER LE WEB API - LE SERVER - L'APPLICATION

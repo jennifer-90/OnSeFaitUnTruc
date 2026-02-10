@@ -1,11 +1,24 @@
 import bcrypt from "bcryptjs";
-import { validationLogin } from "../dto/auth.DTO";
+import { validationRegister, validationLogin } from "../dto/auth.dto.js";
+import { registerUser, loginUser } from "../services/auth.service.js";
 
 const AuthController = {
 
     register: async (req, res) => {
+
         //hash password, crée user, renvoie token
-        res.sendStatus(501);
+        try {
+            //DTO
+            const registerValidationInput = validationRegister(req.body);
+            //SERVICE
+            const registerVerifyLogic = await registerUser(registerValidationInput);
+            //HTTP-CONTROLLER
+            return res.status(201).json(registerVerifyLogic)
+
+        } catch (error) {
+            const statusCode = error.statusCode ?? 400;
+            return res.status(statusCode).json({ message: error.message });
+        }
     },
 
     login: async (req, res) => {
