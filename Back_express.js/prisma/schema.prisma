@@ -1,0 +1,98 @@
+//*****************************************************************************************/
+//* Quand on lances :npx prisma generate => Prisma génère du code dans src/generated/prisma/
+//***************************************************************************************/
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+  //l'url de la database se trouve dans prisma.config.ts
+}
+
+//***********************************************/
+//* MODELS : 
+//*********************************************/
+
+model User {
+  id Int @id @default(autoincrement())
+
+  email        String @unique
+  passwordHash String
+  pseudo       String @unique
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  eventsCreated Event[] @relation("eventsCreated") // => 1 user -> plusieurs events créé
+
+  participations EventParticipant[] //=> un user peut participer à plusieurs event via la table eventParticipant // N <-> N via table pont
+}
+
+//-----------/
+
+model Event {
+  id Int @id @default(autoincrement())
+
+  title         String
+  description   String? //"?" ==> optionnel
+  eventDateTime DateTime
+  address       String
+
+  latitude  Float
+  longitude Float
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  createdById Int
+  createdBy   User @relation("eventsCreated", fields: [createdById], references: [id])
+
+  // PARTICPANTS VIA LA TABLE PIVOT
+  participants EventParticipant[] // => un event peut avoir plusieurs participants via la table eventParticipant // N <-> N via table pont
+
+  @@index([createdById])
+}
+
+//-----------/
+//! TABLE PIVOT
+model EventParticipant {
+  userId    Int
+  eventId   Int
+  createdAt DateTime @default(now())
+
+  user  User  @relation(fields: [userId], references: [id])
+  event Event @relation(fields: [eventId], references: [id])
+  // eventId = colonne stockée dans EventParticipant
+  // event   = champ de relation Prisma (virtuel côté Prisma Client), pas une colonne en plus.
+  // Il permet d'inclure/joindre facilement l'Event lié via Prisma.
+
+  @@id([userId, eventId]) // => La clé primaire de EventParticipant est composée de userId + eventId.
+  @@index([userId])
+  @@index([eventId])
+}
+
+//┌──────────────────────────────┬───────────────────────────────────────────────┬──────────────────────────────────────────────────────────────┐
+//│ Relation                      │ Où est stockée la clé étrangère ?             │ Qu’est-ce que tu écris dans le schema.prisma ?              │
+//├──────────────────────────────┼───────────────────────────────────────────────┼──────────────────────────────────────────────────────────────┤
+//│ MANY-TO-ONE / ONE-TO-MANY     │ Dans la table "du côté many" (ex: Event)      │ Dans User : eventsCreated Event[]                           │
+//│ (ex: 1 User crée N Events)    │ (c’est Event qui stocke l’id du User)         │ Dans Event : createdById Int                                │
+//│                               │                                               │             createdBy User @relation(fields:[createdById]  
+//                                                                                              references:[id])                                │
+//├──────────────────────────────┼───────────────────────────────────────────────┼──────────────────────────────────────────────────────────────┤
+//│ MANY-TO-MANY                  │ Dans une table de jonction (EventParticipant) │ Dans User : participations EventParticipant[]               │
+//│ (ex: User participe à Event)  │ (elle contient userId + eventId)              │ Dans Event : participants EventParticipant[]                │
+//│                               │                                               │ Dans EventParticipant : userId Int, eventId Int             │
+//│                               │                                               │                      user User  @relation(fields:[userId],    
+//                                                                                                      references:[id])                        │
+//│                               │                                               │                      event Event @relation(fields:[eventId], 
+//                                                                                                      references:[id])                        │
+//│                               │                                               │                      @@id([userId, eventId]) (anti-doublon) │
+//├──────────────────────────────┼───────────────────────────────────────────────┼──────────────────────────────────────────────────────────────┤
+//│ ONE-TO-ONE                    │ Dans une des 2 tables, avec une FK UNIQUE      │ Dans User : profile Profile?                               │
+//│ (ex: 1 User ↔ 1 Profile)      │ (ex: Profile stocke userId @unique)            │ Dans Profile : userId Int @unique                          │
+//│                               │                                               │               user User @relation(fields:[userId], references:[id]) 
+//└──────────────────────────────┴───────────────────────────────────────────────┴──────────────────────────────────────────────────────────────┘
